@@ -100,6 +100,10 @@ CHANNEL_TYPES = {
         "label": "PushPlus",
         "fields": ["token", "topic"],
     },
+    "pushdeer": {
+        "label": "PushDeer",
+        "fields": ["tokenid"],
+    },
     "discord": {
         "label": "Discord",
         "fields": ["webhook_id", "webhook_token"],
@@ -114,10 +118,18 @@ CHANNEL_TYPES = {
 _APPRISE_TYPES = {"telegram", "bark", "dingtalk", "lark", "discord", "pushover"}
 
 # 自定义实现的渠道类型（带代理或特殊需求）
-_CUSTOM_IMPL_TYPES = {"wecom", "serverchan", "pushplus"}
+_CUSTOM_IMPL_TYPES = {"wecom", "serverchan", "pushplus", "pushdeer"}
 
 # 支持 Markdown 的渠道（不需要 sanitize）
-_MARKDOWN_CHANNELS = {"wecom", "serverchan", "pushplus", "dingtalk", "lark", "discord"}
+_MARKDOWN_CHANNELS = {
+    "wecom",
+    "serverchan",
+    "pushplus",
+    "pushdeer",
+    "dingtalk",
+    "lark",
+    "discord",
+}
 
 # 不支持 Markdown 的渠道（需要 sanitize）
 _PLAIN_TEXT_CHANNELS = {"telegram", "bark", "pushover"}
@@ -358,6 +370,8 @@ class NotifierManager:
             await self._send_serverchan(config, title, content)
         elif ch_type == "pushplus":
             await self._send_pushplus(config, title, content)
+        elif ch_type == "pushdeer":
+            await self._send_pushdeer(config, title, content)
         else:
             logger.warning(f"未知的自定义渠道类型: {ch_type}")
 
@@ -486,3 +500,26 @@ class NotifierManager:
             if data.get("code") != 200:
                 raise RuntimeError(f"PushPlus 发送失败: {data.get('msg')}")
             logger.info(f"PushPlus 通知发送成功: {title}")
+
+    async def _send_pushdeer(self, config: dict, title: str, content: str):
+        """PushDeer 推送"""
+        tokenid = (
+            config.get("tokenid")
+            or config.get("pushkey")
+            or config.get("token")
+            or ""
+        )
+        if not tokenid:
+            raise ValueError("PushDeer 需要 tokenid")
+
+        url = "https://api2.pushdeer.com/message/push"
+        text = f"{title}\n\n{content}" if title else content
+        payload = {"pushkey": tokenid, "text": text}
+
+        async with httpx.AsyncClient() as client:
+            resp = await client.post(url, data=payload, timeout=30)
+            data = resp.json()
+            if data.get("code") != 0:
+                message = data.get("message") or data.get("msg") or data.get("error")
+                raise RuntimeError(f"PushDeer 发送失败: {message}")
+            logger.info(f"PushDeer 通知发送成功: {title}")

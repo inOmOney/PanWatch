@@ -118,6 +118,12 @@ const CHANNEL_TYPE_FIELDS: Record<string, { label: string; fields: ChannelFieldD
       { key: 'topic', label: '群组编码', placeholder: '选填，群组推送时填写' },
     ],
   },
+  pushdeer: {
+    label: 'PushDeer',
+    fields: [
+      { key: 'tokenid', label: 'Token ID', placeholder: '你的 PushDeer tokenid / pushkey', secret: true, required: true },
+    ],
+  },
   discord: {
     label: 'Discord',
     fields: [
